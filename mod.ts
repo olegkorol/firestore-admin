@@ -1,6 +1,14 @@
 // deno-lint-ignore-file no-explicit-any
 import * as googleAuth from 'google-auth-library'
 
+// Define a type for the runtime environment
+type RuntimeEnv = 'deno' | 'node'
+
+// Function to determine the runtime environment
+const getRuntimeEnv = (): RuntimeEnv => {
+  return typeof Deno !== 'undefined' ? 'deno' : 'node'
+}
+
 export class FirestoreAdminClient {
   private FIREBASE_SERVICE_ACCOUNT: any
   private GCP_PROJECT_NAME: string
@@ -9,9 +17,11 @@ export class FirestoreAdminClient {
   private jwtClient: googleAuth.JWT
   private accessToken: string | null | undefined
   private tokenExpiry: number
+  private runtimeEnv: RuntimeEnv
 
   constructor() {
-    const serviceAccountJson = Deno.env.get('FIREBASE_SERVICE_ACCOUNT')
+    this.runtimeEnv = getRuntimeEnv()
+    const serviceAccountJson = this.getEnvVariable('FIREBASE_SERVICE_ACCOUNT')
     if (!serviceAccountJson) {
       throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set')
     }
@@ -29,6 +39,11 @@ export class FirestoreAdminClient {
     )
     this.accessToken = null
     this.tokenExpiry = 0
+  }
+
+  private getEnvVariable(name: string): string | undefined {
+    // deno-lint-ignore no-process-globals
+    return this.runtimeEnv === 'deno' ? Deno.env.get(name) : process.env[name]
   }
 
   private async refreshAccessToken(): Promise<void> {
@@ -52,6 +67,11 @@ export class FirestoreAdminClient {
     }
   }
 
+  /**
+   * Fetch a document
+   * @param path - The path to the document
+   * @returns The document data
+   */
   async getDocument(path: string): Promise<any> {
     const headers = await this.getHeaders()
     const response = await fetch(`${this.firestoreBaseUrl}/${path}`, {
@@ -65,6 +85,11 @@ export class FirestoreAdminClient {
     return this.documentToJson(data.fields)
   }
 
+  /**
+   * Fetch all documents in a collection
+   * @param path - The path to the collection
+   * @returns The collection data
+   */
   async getDocumentsInCollection(path: string): Promise<any> {
     const headers = await this.getHeaders()
     const response = await fetch(`${this.firestoreBaseUrl}/${path}`, {
@@ -84,6 +109,13 @@ export class FirestoreAdminClient {
     return documents
   }
 
+  /**
+   * Update a document
+   * @param path - The path to the document
+   * @param data - The data to update
+   * @param updateFields - Optional. The specific fields to update
+   * @returns The updated document data
+   */
   async updateDocument(
     path: string,
     data: any,
@@ -206,6 +238,7 @@ export class FirestoreAdminClient {
       `${error.message}\n`,
       '*-*'.repeat(20)
     )
-    // Deno.exit(1)
+    // process.exit(1) // Uncomment this line for Node.js
+    // Deno.exit(1) // Uncomment this line for Deno
   }
 }
