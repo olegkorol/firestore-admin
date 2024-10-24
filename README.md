@@ -43,7 +43,7 @@ FIREBASE_SERVICE_ACCOUNT='{
 2. Install `@koiztech/firestore-admin` as a dependency:
 
 ```bash
-deno add @koiztech/firestore-admin
+deno add jsr:@koiztech/firestore-admin
 ```
 
 3. Import `FirestoreAdminClient` in your Deno script and initialise it:
