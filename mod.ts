@@ -1,0 +1,211 @@
+// deno-lint-ignore-file no-explicit-any
+import * as googleAuth from 'google-auth-library'
+
+export class FirestoreAdminClient {
+  private FIREBASE_SERVICE_ACCOUNT: any
+  private GCP_PROJECT_NAME: string
+  private AUTH_SCOPES: string[]
+  private firestoreBaseUrl: string
+  private jwtClient: googleAuth.JWT
+  private accessToken: string | null | undefined
+  private tokenExpiry: number
+
+  constructor() {
+    const serviceAccountJson = Deno.env.get('FIREBASE_SERVICE_ACCOUNT')
+    if (!serviceAccountJson) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set')
+    }
+
+    this.FIREBASE_SERVICE_ACCOUNT = JSON.parse(serviceAccountJson)
+    this.GCP_PROJECT_NAME = this.FIREBASE_SERVICE_ACCOUNT.project_id
+    this.AUTH_SCOPES = ['https://www.googleapis.com/auth/cloud-platform']
+    this.firestoreBaseUrl = `https://content-firestore.googleapis.com/v1beta1/projects/${this.GCP_PROJECT_NAME}/databases/(default)/documents`
+    this.jwtClient = new googleAuth.JWT(
+      this.FIREBASE_SERVICE_ACCOUNT.client_email,
+      undefined,
+      this.FIREBASE_SERVICE_ACCOUNT.private_key,
+      this.AUTH_SCOPES,
+      undefined,
+    )
+    this.accessToken = null
+    this.tokenExpiry = 0
+  }
+
+  private async refreshAccessToken(): Promise<void> {
+    const now = Date.now()
+    if (!this.accessToken || now >= this.tokenExpiry) {
+      const tokens = await this.jwtClient.authorize()
+      this.accessToken = tokens.access_token
+      this.tokenExpiry = now + (tokens.expiry_date || 3600) * 1000 // Default to 1 hour if expiry_date is not provided by Google
+    }
+  }
+
+  private async getHeaders(): Promise<Record<string, string>> {
+    await this.refreshAccessToken()
+    return {
+      'accept': '*/*',
+      'authorization': `Bearer ${this.accessToken}`,
+      'sec-fetch-dest': 'empty',
+      'sec-fetch-mode': 'cors',
+      'sec-fetch-site': 'same-origin',
+      'sec-gpc': '1'
+    }
+  }
+
+  async getDocument(path: string): Promise<any> {
+    const headers = await this.getHeaders()
+    const response = await fetch(`${this.firestoreBaseUrl}/${path}`, {
+      'headers': headers,
+      'body': null,
+      'method': 'GET'
+    })
+    const data: any = await response.json()
+    if (data?.error) this.errorHandler(data.error, 'getDocument')
+    console.log(this.documentToJson(data.fields))
+    return this.documentToJson(data.fields)
+  }
+
+  async getDocumentsInCollection(path: string): Promise<any> {
+    const headers = await this.getHeaders()
+    const response = await fetch(`${this.firestoreBaseUrl}/${path}`, {
+      'headers': headers,
+      'body': null,
+      'method': 'GET'
+    })
+    const data: any = await response.json()
+    // console.log({data})
+    if (data?.error) this.errorHandler(data.error, 'listDocumentsInCollection')
+    const documents = []
+    for (const document of data.documents) {
+      const documentData = this.documentToJson(document.fields)
+      // console.log({documentData})
+      documents.push(documentData)
+    }
+    return documents
+  }
+
+  async updateDocument(
+    path: string,
+    data: any,
+    updateFields?: string[]
+  ): Promise<any> {
+    const body = this.jsonToDocument(data)
+    let url = `${this.firestoreBaseUrl}/${path}`
+
+    if (updateFields && updateFields.length > 0) {
+      url = url.concat(
+        `?updateMask.fieldPaths=${updateFields.join('&updateMask.fieldPaths=')}`
+      )
+    }
+
+    console.log('> Updating document:\n', url)
+
+    const headers = await this.getHeaders()
+    const response = await fetch(`${url}`, {
+      'headers': headers,
+      'body': JSON.stringify(body),
+      'method': 'PATCH'
+    })
+    const responseData: any = await response.json()
+    if (responseData?.error) this.errorHandler(responseData.error, 'updateDocument')
+    return responseData
+  }
+
+  private documentToJson(fields: any): any {
+    if (!fields) {
+      return {}
+    }
+    const result: any = {}
+    for (const f in fields) {
+      const key = f,
+        value = fields[f],
+        isDocumentType = [
+          'stringValue',
+          'booleanValue',
+          'doubleValue',
+          'integerValue',
+          'timestampValue',
+          'mapValue',
+          'arrayValue',
+          'nullValue'
+        ].find((t) => t === key)
+      if (isDocumentType) {
+        const item = [
+          'stringValue',
+          'booleanValue',
+          'doubleValue',
+          'integerValue',
+          'timestampValue',
+          'nullValue'
+        ]
+          .find((t) => t === key)
+        if (item) {
+          return value
+        } else if ('mapValue' == key) {
+          return this.documentToJson(value.fields || {})
+        } else if ('arrayValue' == key) {
+          const list = value.values
+          return !list ? list?.map((l: any) => this.documentToJson(l)) : []
+        }
+      } else {
+        result[key] = this.documentToJson(value)
+      }
+    }
+    return result
+  }
+
+  private jsonToDocument(json: any): { fields: any } {
+    const data: any = { fields: {} }
+    Object.keys(json).forEach((key) => {
+      let value = json[key]
+      let type
+      if (typeof value === 'string') {
+        type = 'stringValue'
+      } else if (typeof value === 'number') {
+        if (Number.isInteger(value)) {
+          type = 'integerValue'
+          if (isNaN(value)) value = 0 // catch NaN
+        } else {
+          type = 'doubleValue'
+          if (isNaN(value)) value = 0.00 // catch NaN
+        }
+      } else if (value instanceof Date) {
+        type = 'timestampValue'
+        value = value.toJSON()
+      } else if (typeof value === 'boolean') {
+        type = 'booleanValue'
+      } else if (value === null || value === undefined) {
+        type = 'nullValue'
+      } else if (Array.isArray(value)) {
+        type = 'arrayValue'
+        value = {
+          values: value.map((v) => {
+            const val = this.jsonToDocument({ value: v }).fields.value
+            return val
+          })
+        }
+      } else if (typeof value === 'object') {
+        type = 'mapValue'
+        value = { fields: this.jsonToDocument(value).fields }
+      } else {
+        throw new Error(`Unsupported type for value: ${value}`)
+      }
+      data.fields[key] = { [type]: value }
+    })
+    return data
+  }
+
+  private errorHandler(error: any, call: any): void {
+    console.error(
+      '*-*'.repeat(20),
+      '\ncall:',
+      call,
+      '\nerrorCode:',
+      error.code,
+      '\nerrorMessage:',
+      `${error.message}\n`,
+      '*-*'.repeat(20)
+    )
+    // Deno.exit(1)
+  }
+}
