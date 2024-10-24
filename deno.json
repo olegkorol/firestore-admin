@@ -1,9 +1,10 @@
 {
   "name": "@koiztech/firestore-admin",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "exports": "./mod.ts",
   "tasks": {
-    "dev": "deno run --watch mod.ts"
+    "dev": "deno run --watch --env mod.ts",
+    "test": "deno test --allow-env"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1",

@@ -1,6 +1,8 @@
 # Firestore Admin Client for Deno
 
-This is a simple Firestore Admin Client implemented for Deno. It provides an easy-to-use interface for interacting with Firestore databases using the Google Cloud Firestore API.
+This is a simple Firestore Admin Client implemented for Deno. It provides an
+easy-to-use interface for interacting with Firestore databases using the Google
+Cloud Firestore API.
 
 ## Features
 
@@ -18,9 +20,11 @@ This is a simple Firestore Admin Client implemented for Deno. It provides an eas
 
 ## Setup
 
-1. Set the `FIREBASE_SERVICE_ACCOUNT` environment variable with the contents of your service account JSON file.
+1. Set the `FIREBASE_SERVICE_ACCOUNT` environment variable with the contents of
+   your service account JSON file.
 
-You can set this environment variable in a `.env` file (do not forget to add the `--env` flag when running your script):
+You can set this environment variable in a `.env` file (do not forget to add the
+`--env` flag when running your script):
 
 ```text
 # .env
@@ -49,42 +53,59 @@ deno add jsr:@koiztech/firestore-admin
 3. Import `FirestoreAdminClient` in your Deno script and initialise it:
 
 ```typescript
-import { FirestoreAdminClient } from '@koiztech/firestore-admin'
+import { FirestoreAdminClient } from "@koiztech/firestore-admin";
 
-const firestore = new FirestoreAdminClient()
+const firestore = new FirestoreAdminClient();
 ```
 
 ## Usage
 
-`firestore-admin` will take care of parsing the data to/from JSON when fetching/updating documents.
+`firestore-admin` will take care of parsing the data to/from JSON when
+fetching/updating documents.
+
+### Create a document
+
+```typescript
+const document = await firestore.createDocument("my-collection", {
+  name: "John Doe",
+});
+```
+
+### List all documents in a collection
+
+```typescript
+const documents = await firestore.listDocumentsInCollection("my-collection");
+
+// documents = ['document1', 'document2']
+```
 
 ### Fetch all documents in a collection
 
 ```typescript
-const collection = await firestore.getDocumentsInCollection('my-collection')
+const collection = await firestore.getDocumentsInCollection("my-collection");
 ```
 
 ### Fetch a document
 
 ```typescript
-const document = await firestore.getDocument('my-collection/my-document')
+const document = await firestore.getDocument("my-collection/my-document");
 ```
 
 ### Update a document
 
 ```typescript
-await firestore.updateDocument('my-collection/my-document', {
-  name: 'John Doe'
+await firestore.updateDocument{"my-collection/my-document", {
+  name: "John Doe"
 })
 
 // ...or with specific update fields
 
-await firestore.updateDocument('my-collection/my-document', {
-  name: 'John Doe',
-  age: 30 // this field will not be updated
+await firestore.updateDocument("my-collection/my-document", {
+  name: "John Doe",
+  age: 30, // this field will not be updated
   address: {
-    city: 'Dubai',
-    country: 'United Arab Emirates' // this field will not be updated
-  }
-}, ['name', 'address.city'])
+    city: "Dubai",
+    country: "United Arab Emirates", // this field will not be updated
+  },
+}, ["name", "address.city"]);
 ```
