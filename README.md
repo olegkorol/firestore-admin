@@ -14,11 +14,31 @@ This is a simple Firestore Admin Client implemented for Deno. It provides an eas
 
 - Deno installed on your system
 - A Google Cloud project with Firestore enabled
-- A service account JSON key file with the necessary permissions
+- A service account JSON file with the necessary permissions
 
 ## Setup
 
-1. Set the `FIREBASE_SERVICE_ACCOUNT` environment variable with the contents of your service account JSON key file.
+1. Set the `FIREBASE_SERVICE_ACCOUNT` environment variable with the contents of your service account JSON file.
+
+You can set this environment variable in a `.env` file (do not forget to add the `--env` flag when running your script):
+
+```text
+# .env
+
+FIREBASE_SERVICE_ACCOUNT='{
+  "type": "service_account",
+  "project_id": "XXX",
+  "private_key_id": "XXX",
+  "private_key": "XXX",
+  "client_email": "XXX@XXX.iam.gserviceaccount.com",
+  "client_id": "XXX",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/XXX.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}'
+```
 
 2. Install `@koiztech/firestore-admin` as a dependency:
 
