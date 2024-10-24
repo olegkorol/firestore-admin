@@ -1,14 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import * as googleAuth from 'google-auth-library'
 
-// Define a type for the runtime environment
-type RuntimeEnv = 'deno' | 'node'
-
-// Function to determine the runtime environment
-const getRuntimeEnv = (): RuntimeEnv => {
-  return typeof Deno !== 'undefined' ? 'deno' : 'node'
-}
-
 export class FirestoreAdminClient {
   private FIREBASE_SERVICE_ACCOUNT: any
   private GCP_PROJECT_NAME: string
@@ -17,11 +9,9 @@ export class FirestoreAdminClient {
   private jwtClient: googleAuth.JWT
   private accessToken: string | null | undefined
   private tokenExpiry: number
-  private runtimeEnv: RuntimeEnv
 
   constructor() {
-    this.runtimeEnv = getRuntimeEnv()
-    const serviceAccountJson = this.getEnvVariable('FIREBASE_SERVICE_ACCOUNT')
+    const serviceAccountJson = Deno.env.get('FIREBASE_SERVICE_ACCOUNT')
     if (!serviceAccountJson) {
       throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set')
     }
@@ -39,11 +29,6 @@ export class FirestoreAdminClient {
     )
     this.accessToken = null
     this.tokenExpiry = 0
-  }
-
-  private getEnvVariable(name: string): string | undefined {
-    // deno-lint-ignore no-process-globals
-    return this.runtimeEnv === 'deno' ? Deno.env.get(name) : process.env[name]
   }
 
   private async refreshAccessToken(): Promise<void> {
