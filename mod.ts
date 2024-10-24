@@ -1,6 +1,23 @@
 // deno-lint-ignore-file no-explicit-any
 import * as googleAuth from "google-auth-library";
 
+export enum FirestoreOperator {
+  LESS_THAN = 'LESS_THAN',
+  LESS_THAN_OR_EQUAL = 'LESS_THAN_OR_EQUAL',
+  GREATER_THAN = 'GREATER_THAN',
+  GREATER_THAN_OR_EQUAL = 'GREATER_THAN_OR_EQUAL',
+  EQUAL = 'EQUAL',
+  NOT_EQUAL = 'NOT_EQUAL',
+  ARRAY_CONTAINS = 'ARRAY_CONTAINS',
+  IN = 'IN',
+  ARRAY_CONTAINS_ANY = 'ARRAY_CONTAINS_ANY',
+  NOT_IN = 'NOT_IN',
+  IS_NAN = 'IS_NAN',
+  IS_NULL = 'IS_NULL',
+  IS_NOT_NAN = 'IS_NOT_NAN',
+  IS_NOT_NULL = 'IS_NOT_NULL'
+}
+
 export class FirestoreAdminClient {
   private FIREBASE_SERVICE_ACCOUNT: any;
   private GCP_PROJECT_NAME: string;
@@ -22,7 +39,7 @@ export class FirestoreAdminClient {
     this.GCP_PROJECT_NAME = this.FIREBASE_SERVICE_ACCOUNT.project_id;
     this.AUTH_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"];
     this.firestoreBaseUrl =
-      `https://content-firestore.googleapis.com/v1beta1/projects/${this.GCP_PROJECT_NAME}/databases/(default)/documents`;
+      `https://content-firestore.googleapis.com/v1/projects/${this.GCP_PROJECT_NAME}/databases/(default)/documents`;
     this.jwtClient = new googleAuth.JWT(
       this.FIREBASE_SERVICE_ACCOUNT.client_email,
       undefined,
@@ -119,23 +136,89 @@ export class FirestoreAdminClient {
    * @param path - The path to the collection
    * @returns The collection data
    */
-  async getDocumentsInCollection(path: string): Promise<any> {
+  async getDocumentsInCollection(path: string, options?: {
+    where?: {
+      filters: [string, FirestoreOperator, any][];
+      operator?: "AND" | "OR";
+    };
+    orderBy?: { field: string; direction?: "ASCENDING" | "DESCENDING" }[];
+    limit?: number;
+    offset?: number;
+  }): Promise<any> {
     const headers = await this.getHeaders();
-    const response = await fetch(`${this.firestoreBaseUrl}/${path}`, {
-      "headers": headers,
-      "body": null,
-      "method": "GET",
-    });
-    const data: any = await response.json();
-    // console.log({data})
-    if (data?.error) this.errorHandler(data.error, "listDocumentsInCollection");
-    const documents = [];
-    for (const document of data.documents) {
-      const documentData = this.documentToJson(document.fields);
-      // console.log({documentData})
-      documents.push(documentData);
+
+    if (options) {
+      const structuredQuery: any = {
+        from: [{ collectionId: path, allDescendants: false }],
+      };
+
+      if (options.where) {
+        structuredQuery.where = {
+          compositeFilter: {
+            op: 'AND',
+            filters: options.where.filters.map(([field, op, value]) => ({
+              fieldFilter: {
+                field: { fieldPath: field },
+                op,
+                value: this.encodeValue(value)
+              }
+            }))
+          }
+        }
+      }
+
+      if (options.orderBy) {
+        structuredQuery.orderBy = options.orderBy.map((
+          { field, direction = "ASCENDING" },
+        ) => ({
+          field: { fieldPath: field },
+          direction,
+        }));
+      }
+
+      if (options.limit !== undefined) {
+        structuredQuery.limit = { value: options.limit };
+      }
+
+      if (options.offset !== undefined) {
+        structuredQuery.offset = options.offset;
+      }
+
+      const response = await fetch(
+        `${this.firestoreBaseUrl}:runQuery`,
+        {
+          headers,
+          method: "POST",
+          body: JSON.stringify({ structuredQuery }),
+        },
+      );
+      const data: any = await response.json();
+
+      if (data?.error || data?.[0]?.error) {
+        this.errorHandler(data.error ?? data?.[0]?.error, `${this.firestoreBaseUrl}/${path}:runQuery`);
+        console.log({ extendedDetails: data.error?.details ?? data?.[0]?.error?.details });
+        return [];
+      }
+
+      // If the query yields no results, it will return: [ { readTime: string } ]
+      if (data.length == 1 && !data[0].document) {
+        return [];
+      }
+
+      return data.map((doc: any) => this.documentToJson(doc.document.fields));
+    } else {
+      const response = await fetch(`${this.firestoreBaseUrl}/${path}`, {
+        headers,
+        method: "GET",
+      });
+      const data: any = await response.json();
+
+      if (data?.error) {
+        this.errorHandler(data.error, "listDocumentsInCollection");
+      }
+
+      return data.documents.map((doc: any) => this.documentToJson(doc.fields));
     }
-    return documents;
   }
 
   /**
@@ -217,6 +300,26 @@ export class FirestoreAdminClient {
       }
     }
     return result;
+  }
+
+  private encodeValue(value: any): any {
+    if (typeof value === "string") {
+      return { stringValue: value };
+    } else if (typeof value === "number") {
+      if (Number.isInteger(value)) {
+        return { integerValue: value };
+      } else {
+        return { doubleValue: value };
+      }
+    } else if (typeof value === "boolean") {
+      return { booleanValue: value };
+    } else if (value === null) {
+      return { nullValue: "NULL_VALUE" };
+    } else if (Array.isArray(value)) {
+      return { arrayValue: { values: value.map((v) => this.encodeValue(v)) } };
+    } else {
+      throw new Error(`Unsupported value type: ${typeof value}`);
+    }
   }
 
   private jsonToDocument(json: any): { fields: any } {

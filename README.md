@@ -91,10 +91,46 @@ const collection = await firestore.getDocumentsInCollection("my-collection");
 const document = await firestore.getDocument("my-collection/my-document");
 ```
 
+### Fetch a document with a structured query
+
+```typescript
+// Import the FirestoreOperator enum
+import { FirestoreOperator } from "@koiztech/firestore-admin";
+
+// e.g.
+const document = await firestore.getDocument("my-collection", {
+  where: {
+    filters: [
+      ["name", FirestoreOperator.EQUAL, "John Doe"],
+    ],
+  },
+});
+
+// e.g.
+const document = await firestore.getDocument("my-collection", {
+  where: {
+    filters: [
+      ["name", FirestoreOperator.IN, ["John Doe", "Max Mustermann"]],
+    ],
+  },
+});
+
+// e.g.
+const document = await firestore.getDocument("my-collection", {
+  where: {
+    filters: [
+      ["name", FirestoreOperator.EQUAL, "Ivan Petrov"],
+      ["age", FirestoreOperator.GREATER_THAN, 20],
+      ["city", FirestoreOperator.EQUAL, "Moscow"],
+    ],
+  },
+});
+```
+
 ### Update a document
 
 ```typescript
-await firestore.updateDocument{"my-collection/my-document", {
+await firestore.updateDocument("my-collection/my-document", {
   name: "John Doe"
 })
 
