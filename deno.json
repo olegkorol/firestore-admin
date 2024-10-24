@@ -1,6 +1,6 @@
 {
   "name": "@koiztech/firestore-admin",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "exports": "./mod.ts",
   "tasks": {
     "dev": "deno run --watch --env mod.ts",

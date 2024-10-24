@@ -85,20 +85,14 @@ const documents = await firestore.listDocumentsInCollection("my-collection");
 const collection = await firestore.getDocumentsInCollection("my-collection");
 ```
 
-### Fetch a document
-
-```typescript
-const document = await firestore.getDocument("my-collection/my-document");
-```
-
-### Fetch a document with a structured query
+### Fetch all documents in a collection with a filter
 
 ```typescript
 // Import the FirestoreOperator enum
 import { FirestoreOperator } from "@koiztech/firestore-admin";
 
 // e.g.
-const document = await firestore.getDocument("my-collection", {
+const documents = await firestore.getDocumentsInCollection("my-collection", {
   where: {
     filters: [
       ["name", FirestoreOperator.EQUAL, "John Doe"],
@@ -116,7 +110,7 @@ const document = await firestore.getDocument("my-collection", {
 });
 
 // e.g.
-const document = await firestore.getDocument("my-collection", {
+const documents = await firestore.getDocumentsInCollection("my-collection", {
   where: {
     filters: [
       ["name", FirestoreOperator.EQUAL, "Ivan Petrov"],
@@ -125,6 +119,12 @@ const document = await firestore.getDocument("my-collection", {
     ],
   },
 });
+```
+
+### Fetch a specific document
+
+```typescript
+const document = await firestore.getDocument("my-collection/my-document");
 ```
 
 ### Update a document
