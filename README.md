@@ -115,7 +115,7 @@ const documents = await firestore.getDocumentsInCollection("my-collection", {
     filters: [
       ["name", FirestoreOperator.EQUAL, "Ivan Petrov"],
       ["age", FirestoreOperator.GREATER_THAN, 20],
-      ["city", FirestoreOperator.EQUAL, "Moscow"],
+      ["address.city", FirestoreOperator.EQUAL, "Moscow"], // example of a nested field
     ],
   },
 });
@@ -143,5 +143,5 @@ await firestore.updateDocument("my-collection/my-document", {
     city: "Dubai",
     country: "United Arab Emirates", // this field will not be updated
   },
-}, ["name", "address.city"]);
+}, ["name", "address.city"]); // you can use nested fields as well
 ```
