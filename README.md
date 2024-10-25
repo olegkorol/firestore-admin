@@ -121,9 +121,9 @@ const documents = await firestore.getDocumentsInCollection("my-collection", {
       ["age", FirestoreOperator.GREATER_THAN, 20],
       ["address.city", FirestoreOperator.EQUAL, "Moscow"], // example of a nested field
     ],
-    orderBy: [{ field: "createdAt", direction: "DESCENDING" }], // you can sort the results
-    limit: 3, // you can limit the number of results
   },
+  orderBy: [{ field: "createdAt", direction: "DESCENDING" }], // you can sort the results
+  limit: 3, // you can limit the number of results
 });
 ```
 
