@@ -205,7 +205,14 @@ export class FirestoreAdminClient {
         return [];
       }
 
-      return data.map((doc: any) => this.documentToJson(doc.document.fields));
+      
+
+      return data.map((doc: any) => {
+        const docId = doc.document?.name.split(`/`).pop() ?? "unknown";
+        console.log({docId});
+        const documentFields = doc.document?.fields || {}
+        return { ...this.documentToJson(documentFields), _id: docId }
+      });
     } else {
       const response = await fetch(`${this.firestoreBaseUrl}/${path}`, {
         headers,
@@ -217,7 +224,11 @@ export class FirestoreAdminClient {
         this.errorHandler(data.error, "listDocumentsInCollection");
       }
 
-      return data.documents.map((doc: any) => this.documentToJson(doc.fields));
+      return data.documents.map((doc: any) => {
+        const docId = doc.name.split(`/`).pop() ?? "unknown";
+        const documentFields = doc.fields || {}
+        return { ...this.documentToJson(documentFields), _id: docId }
+      });
     }
   }
 

@@ -81,11 +81,15 @@ const documents = await firestore.listDocumentsInCollection("my-collection");
 
 ### Fetch all documents in a collection
 
+Note: The fetched documents will have an additional `_id` field, which is the document ID.
+
 ```typescript
 const collection = await firestore.getDocumentsInCollection("my-collection");
 ```
 
 ### Fetch all documents in a collection with a filter
+
+Note: The fetched documents will have an additional `_id` field, which is the document ID.
 
 ```typescript
 // Import the FirestoreOperator enum
@@ -117,6 +121,8 @@ const documents = await firestore.getDocumentsInCollection("my-collection", {
       ["age", FirestoreOperator.GREATER_THAN, 20],
       ["address.city", FirestoreOperator.EQUAL, "Moscow"], // example of a nested field
     ],
+    orderBy: [{ field: "createdAt", direction: "DESCENDING" }], // you can sort the results
+    limit: 3, // you can limit the number of results
   },
 });
 ```
