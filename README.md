@@ -169,20 +169,16 @@ Returns the updated document with an additional `_id` and `_path` fields.
 
 ## Using timestamps
 
-Firestore timestamps are not implemented in this library. If you need to use
-timestamps, here's how you can do it:
-
-```bash
-deno add npm:firebase/firestore
-```
-
-...and then use the `Timestamp` class from the `firebase/firestore` package:
+If you need to use Firestore timestamps, simply use `Date` objects, e.g.:
 
 ```typescript
-import { Timestamp } from "npm:firebase/firestore";
+const now = new Date();
 
-// e.g.
-const timestamp = Timestamp.now();
+// ...and then use it in your document:
+
+await firestore.createDocument("my-collection", {
+  createdAt: now,
+});
 ```
 
-> Note: The same principle applies to `UnionArray` field operations, etc.
+The above will be converted to a Firestore timestamp automatically.
