@@ -1,6 +1,9 @@
 // deno-lint-ignore-file no-explicit-any
 import * as googleAuth from "google-auth-library";
 
+/**
+ * Enum representing the available Firestore query operators
+ */
 export enum FirestoreOperator {
   LESS_THAN = "LESS_THAN",
   LESS_THAN_OR_EQUAL = "LESS_THAN_OR_EQUAL",
@@ -18,6 +21,17 @@ export enum FirestoreOperator {
   IS_NOT_NULL = "IS_NOT_NULL",
 }
 
+/**
+ * Firestore Admin Client for interacting with Google Cloud Firestore in Deno.
+ *
+ * Handles authentication via service account credentials and provides methods for CRUD operations.
+ * Requires FIREBASE_SERVICE_ACCOUNT environment variable to be set with service account JSON.
+ *
+ * @example
+ * ```ts
+ * const firestore = new FirestoreAdminClient();
+ * ```
+ */
 export class FirestoreAdminClient {
   private FIREBASE_SERVICE_ACCOUNT: any;
   private GCP_PROJECT_NAME: string;
@@ -51,7 +65,11 @@ export class FirestoreAdminClient {
     this.tokenExpiry = 0;
   }
 
-  // https://firebase.google.com/docs/projects/provisioning/configure-oauth#auth
+  /**
+   * Refreshes the access token if expired or not present
+   * @private
+   * @see https://firebase.google.com/docs/projects/provisioning/configure-oauth#auth
+   */
   private async refreshAccessToken(): Promise<void> {
     const now = Date.now();
     if (!this.accessToken || now >= this.tokenExpiry) {
@@ -61,6 +79,11 @@ export class FirestoreAdminClient {
     }
   }
 
+  /**
+   * Gets authorization headers for API requests
+   * @private
+   * @returns Headers object with authorization token
+   */
   private async getHeaders(): Promise<Record<string, string>> {
     await this.refreshAccessToken();
     return {
@@ -74,10 +97,16 @@ export class FirestoreAdminClient {
   }
 
   /**
-   * Create a document
-   * @param path - The path to the document
-   * @param data - The data to create
-   * @returns The created document data
+   * Creates a new document in Firestore
+   * @param path - The path to the collection where document will be created
+   * @param data - The document data to create
+   * @returns The created document data with _id and _path fields
+   * @example
+   * ```ts
+   * const document = await firestore.createDocument("my-collection", {
+   *   name: "John Doe",
+   * });
+   * ```
    */
   async createDocument(path: string, data: object): Promise<any> {
     const body = this.jsonToDocument(data);
@@ -100,9 +129,13 @@ export class FirestoreAdminClient {
   }
 
   /**
-   * List all documents in a collection
+   * Lists all documents in a collection
    * @param path - The path to the collection
-   * @returns The list of document names as an array of strings
+   * @returns Array of document IDs in the collection
+   * @example
+   * ```ts
+   * const documents = await firestore.listDocumentsInCollection("my-collection");
+   * ```
    */
   async listDocumentsInCollection(path: string): Promise<string[]> {
     const headers = await this.getHeaders();
@@ -119,9 +152,13 @@ export class FirestoreAdminClient {
   }
 
   /**
-   * Fetch a document
-   * @param path - The path to the document
+   * Fetches a single document by path
+   * @param path - The full path to the document
    * @returns The document data
+   * @example
+   * ```ts
+   * const document = await firestore.getDocument("my-collection/my-document");
+   * ```
    */
   async getDocument(path: string): Promise<any> {
     const headers = await this.getHeaders();
@@ -137,9 +174,42 @@ export class FirestoreAdminClient {
   }
 
   /**
-   * Fetch all documents in a collection
+   * Fetches all documents in a collection with optional query parameters
    * @param path - The path to the collection
-   * @returns The collection data
+   * @param options - Query options including filters, ordering, limits and offsets
+   * @returns Array of document data
+   * @example
+   * ```ts
+   * // Simple case:
+   * const documents = await firestore.getDocumentsInCollection("my-collection");
+   *
+   * // More complex cases:
+   *
+   * // Import the FirestoreOperator enum
+   * import { FirestoreOperator } from "@koiztech/firestore-admin";
+   *
+   * // use some filters:
+   * const documents = await firestore.getDocumentsInCollection("my-collection", {
+   *   where: {
+   *     filters: [
+   *       ["name", FirestoreOperator.EQUAL, "John Doe"],
+   *     ],
+   *   },
+   * });
+   *
+   * // use filters, sorting and limiting:
+   * const documents = await firestore.getDocumentsInCollection("my-collection", {
+   *   where: {
+   *     filters: [
+   *       ["name", FirestoreOperator.EQUAL, "Ivan Petrov"],
+   *       ["age", FirestoreOperator.GREATER_THAN, 20],
+   *       ["address.city", FirestoreOperator.EQUAL, "Moscow"], // example of a nested field
+   *     ],
+   *   },
+   *   orderBy: [{ field: "createdAt", direction: "DESCENDING" }], // you can sort the results
+   *   limit: 3, // you can limit the number of results
+   * });
+   * ```
    */
   async getDocumentsInCollection(path: string, options?: {
     where?: {
@@ -241,11 +311,28 @@ export class FirestoreAdminClient {
   }
 
   /**
-   * Update a document
+   * Updates a document
    * @param path - The path to the document
    * @param data - The data to update
-   * @param updateFields - Optional. The specific fields to update
-   * @returns The updated document data
+   * @param updateFields - Optional array of field paths to update
+   * @returns The updated document data with _id and _path fields
+   * @example
+   * ```ts
+   * await firestore.updateDocument('my-collection/my-document', {
+   *   name: 'John Doe'
+   * })
+   *
+   * // ...or with specific update fields
+   *
+   * await firestore.updateDocument('my-collection/my-document', {
+   *   name: 'John Doe',
+   *   age: 30, // this field will not be updated
+   *   address: {
+   *     city: 'Dubai',
+   *     country: 'United Arab Emirates' // this field will not be updated
+   *   }
+   * }, ['name', 'address.city']) // you can use nested fields as well
+   * ```
    */
   async updateDocument(
     path: string,
@@ -283,6 +370,12 @@ export class FirestoreAdminClient {
     };
   }
 
+  /**
+   * Converts Firestore document format to JSON
+   * @private
+   * @param fields - The Firestore document fields
+   * @returns Plain JavaScript object
+   */
   private documentToJson(fields: any): any {
     if (!fields) {
       return {};
@@ -326,6 +419,12 @@ export class FirestoreAdminClient {
     return result;
   }
 
+  /**
+   * Encodes JavaScript values to Firestore value types
+   * @private
+   * @param value - The value to encode
+   * @returns Firestore value representation
+   */
   private encodeValue(value: any): any {
     if (typeof value === "string") {
       return { stringValue: value };
@@ -346,6 +445,12 @@ export class FirestoreAdminClient {
     }
   }
 
+  /**
+   * Converts JSON to Firestore document format
+   * @private
+   * @param json - Plain JavaScript object
+   * @returns Firestore document representation
+   */
   private jsonToDocument(json: any): { fields: any } {
     const data: any = { fields: {} };
     Object.keys(json).forEach((key) => {
@@ -387,6 +492,12 @@ export class FirestoreAdminClient {
     return data;
   }
 
+  /**
+   * Handles errors from Firestore API calls
+   * @private
+   * @param error - The error object from Firestore
+   * @param call - The name of the function that encountered the error
+   */
   private errorHandler(error: any, call: any): void {
     console.error(
       "*-*".repeat(20),
@@ -398,7 +509,5 @@ export class FirestoreAdminClient {
       `${error.message}\n`,
       "*-*".repeat(20),
     );
-    // process.exit(1) // Uncomment this line for Node.js
-    // Deno.exit(1) // Uncomment this line for Deno
   }
 }
