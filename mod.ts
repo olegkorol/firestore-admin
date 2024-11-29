@@ -2,20 +2,20 @@
 import * as googleAuth from "google-auth-library";
 
 export enum FirestoreOperator {
-  LESS_THAN = 'LESS_THAN',
-  LESS_THAN_OR_EQUAL = 'LESS_THAN_OR_EQUAL',
-  GREATER_THAN = 'GREATER_THAN',
-  GREATER_THAN_OR_EQUAL = 'GREATER_THAN_OR_EQUAL',
-  EQUAL = 'EQUAL',
-  NOT_EQUAL = 'NOT_EQUAL',
-  ARRAY_CONTAINS = 'ARRAY_CONTAINS',
-  IN = 'IN',
-  ARRAY_CONTAINS_ANY = 'ARRAY_CONTAINS_ANY',
-  NOT_IN = 'NOT_IN',
-  IS_NAN = 'IS_NAN',
-  IS_NULL = 'IS_NULL',
-  IS_NOT_NAN = 'IS_NOT_NAN',
-  IS_NOT_NULL = 'IS_NOT_NULL'
+  LESS_THAN = "LESS_THAN",
+  LESS_THAN_OR_EQUAL = "LESS_THAN_OR_EQUAL",
+  GREATER_THAN = "GREATER_THAN",
+  GREATER_THAN_OR_EQUAL = "GREATER_THAN_OR_EQUAL",
+  EQUAL = "EQUAL",
+  NOT_EQUAL = "NOT_EQUAL",
+  ARRAY_CONTAINS = "ARRAY_CONTAINS",
+  IN = "IN",
+  ARRAY_CONTAINS_ANY = "ARRAY_CONTAINS_ANY",
+  NOT_IN = "NOT_IN",
+  IS_NAN = "IS_NAN",
+  IS_NULL = "IS_NULL",
+  IS_NOT_NAN = "IS_NOT_NAN",
+  IS_NOT_NULL = "IS_NOT_NULL",
 }
 
 export class FirestoreAdminClient {
@@ -91,7 +91,12 @@ export class FirestoreAdminClient {
     if (responseData?.error) {
       this.errorHandler(responseData.error, "createDocument");
     }
-    return responseData;
+    const jsonDocument = this.documentToJson(responseData.fields);
+    return {
+      _id: responseData.name.split(`/`).pop(),
+      _path: responseData.name.split("documents/")[1],
+      ...jsonDocument,
+    };
   }
 
   /**
@@ -155,16 +160,16 @@ export class FirestoreAdminClient {
       if (options.where) {
         structuredQuery.where = {
           compositeFilter: {
-            op: 'AND',
+            op: "AND",
             filters: options.where.filters.map(([field, op, value]) => ({
               fieldFilter: {
                 field: { fieldPath: field },
                 op,
-                value: this.encodeValue(value)
-              }
-            }))
-          }
-        }
+                value: this.encodeValue(value),
+              },
+            })),
+          },
+        };
       }
 
       if (options.orderBy) {
@@ -195,8 +200,13 @@ export class FirestoreAdminClient {
       const data: any = await response.json();
 
       if (data?.error || data?.[0]?.error) {
-        this.errorHandler(data.error ?? data?.[0]?.error, `${this.firestoreBaseUrl}/${path}:runQuery`);
-        console.log({ extendedDetails: data.error?.details ?? data?.[0]?.error?.details });
+        this.errorHandler(
+          data.error ?? data?.[0]?.error,
+          `${this.firestoreBaseUrl}/${path}:runQuery`,
+        );
+        console.log({
+          extendedDetails: data.error?.details ?? data?.[0]?.error?.details,
+        });
         return [];
       }
 
@@ -205,13 +215,11 @@ export class FirestoreAdminClient {
         return [];
       }
 
-      
-
       return data.map((doc: any) => {
         const docId = doc.document?.name.split(`/`).pop() ?? "unknown";
-        console.log({docId});
-        const documentFields = doc.document?.fields || {}
-        return { ...this.documentToJson(documentFields), _id: docId }
+        console.log({ docId });
+        const documentFields = doc.document?.fields || {};
+        return { ...this.documentToJson(documentFields), _id: docId };
       });
     } else {
       const response = await fetch(`${this.firestoreBaseUrl}/${path}`, {
@@ -226,8 +234,8 @@ export class FirestoreAdminClient {
 
       return data.documents.map((doc: any) => {
         const docId = doc.name.split(`/`).pop() ?? "unknown";
-        const documentFields = doc.fields || {}
-        return { ...this.documentToJson(documentFields), _id: docId }
+        const documentFields = doc.fields || {};
+        return { ...this.documentToJson(documentFields), _id: docId };
       });
     }
   }
@@ -267,7 +275,12 @@ export class FirestoreAdminClient {
     if (responseData?.error) {
       this.errorHandler(responseData.error, "updateDocument");
     }
-    return responseData;
+    const jsonDocument = this.documentToJson(responseData.fields);
+    return {
+      _id: responseData.name.split(`/`).pop(),
+      _path: responseData.name.split("documents/")[1],
+      ...jsonDocument,
+    };
   }
 
   private documentToJson(fields: any): any {

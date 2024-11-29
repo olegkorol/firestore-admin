@@ -69,7 +69,16 @@ fetching/updating documents.
 const document = await firestore.createDocument("my-collection", {
   name: "John Doe",
 });
+
+// document = {
+//   _id: 'XXX',
+//   _path: 'my-collection/XXX',
+//   name: 'John Doe',
+// }
 ```
+
+Returns the created document with an additional `_id` and `_path` fields, which
+are the document ID and path respectively.
 
 ### List all documents in a collection
 
@@ -79,9 +88,12 @@ const documents = await firestore.listDocumentsInCollection("my-collection");
 // documents = ['document1', 'document2']
 ```
 
+Returns an array of document IDs.
+
 ### Fetch all documents in a collection
 
-Note: The fetched documents will have an additional `_id` field, which is the document ID.
+Note: The fetched documents will have an additional `_id` field, which is the
+document ID.
 
 ```typescript
 const collection = await firestore.getDocumentsInCollection("my-collection");
@@ -89,7 +101,8 @@ const collection = await firestore.getDocumentsInCollection("my-collection");
 
 ### Fetch all documents in a collection with a filter
 
-Note: The fetched documents will have an additional `_id` field, which is the document ID.
+Note: The fetched documents will have an additional `_id` field, which is the
+document ID.
 
 ```typescript
 // Import the FirestoreOperator enum
@@ -137,8 +150,8 @@ const document = await firestore.getDocument("my-collection/my-document");
 
 ```typescript
 await firestore.updateDocument("my-collection/my-document", {
-  name: "John Doe"
-})
+  name: "John Doe",
+});
 
 // ...or with specific update fields
 
@@ -151,3 +164,25 @@ await firestore.updateDocument("my-collection/my-document", {
   },
 }, ["name", "address.city"]); // you can use nested fields as well
 ```
+
+Returns the updated document with an additional `_id` and `_path` fields.
+
+## Using timestamps
+
+Firestore timestamps are not implemented in this library. If you need to use
+timestamps, here's how you can do it:
+
+```bash
+deno add npm:firebase/firestore
+```
+
+...and then use the `Timestamp` class from the `firebase/firestore` package:
+
+```typescript
+import { Timestamp } from "npm:firebase/firestore";
+
+// e.g.
+const timestamp = Timestamp.now();
+```
+
+> Note: The same principle applies to `UnionArray` field operations, etc.
