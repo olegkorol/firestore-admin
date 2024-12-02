@@ -440,6 +440,8 @@ export class FirestoreAdminClient {
       return { nullValue: "NULL_VALUE" };
     } else if (Array.isArray(value)) {
       return { arrayValue: { values: value.map((v) => this.encodeValue(v)) } };
+    } else if (value instanceof Date) {
+      return { timestampValue: value.toJSON() };
     } else {
       throw new Error(`Unsupported value type: ${typeof value}`);
     }

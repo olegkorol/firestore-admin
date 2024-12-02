@@ -121,18 +121,19 @@ const documents = await firestore.getDocumentsInCollection("my-collection", {
 const document = await firestore.getDocument("my-collection", {
   where: {
     filters: [
-      ["name", FirestoreOperator.IN, ["John Doe", "Max Mustermann"]],
+      ["name", FirestoreOperator.IN, ["John Doe", "Max Mustermann"]], // example of an IN filter
     ],
   },
 });
 
-// e.g.
+// e.g. a more complex query
 const documents = await firestore.getDocumentsInCollection("my-collection", {
   where: {
     filters: [
       ["name", FirestoreOperator.EQUAL, "Ivan Petrov"],
-      ["age", FirestoreOperator.GREATER_THAN, 20],
+      ["height", FirestoreOperator.LESS_THAN, 200],
       ["address.city", FirestoreOperator.EQUAL, "Moscow"], // example of a nested field
+      ["bornAt", FirestoreOperator.GREATER_THAN, new Date("1990-01-01T12:50:00.000Z")], // example of a timestamp filter
     ],
   },
   orderBy: [{ field: "createdAt", direction: "DESCENDING" }], // you can sort the results
@@ -182,3 +183,13 @@ await firestore.createDocument("my-collection", {
 ```
 
 The above will be converted to a Firestore timestamp automatically.
+
+When filtering results by timestamp, make sure to use `Date` objects as well, e.g.:
+
+```typescript
+const documents = await firestore.getDocumentsInCollection("my-collection", {
+  where: {
+    filters: [["createdAt", FirestoreOperator.GREATER_THAN, new Date("2024-12-02")]],
+  },
+});
+```
