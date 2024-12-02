@@ -93,16 +93,34 @@ Returns an array of document IDs.
 ### Fetch all documents in a collection
 
 Note: The fetched documents will have an additional `_id` field, which is the
-document ID.
+document ID. `getDocumentsInCollectionGroup` additionally returns a `_path`
+property.
+
+To simply fetch all documents in a collection, use `getDocumentsInCollection`,
+e.g.:
 
 ```typescript
 const collection = await firestore.getDocumentsInCollection("my-collection");
+```
+
+If you want to fetch documents from a sub collection (aka. collection group),
+you can do so with `getDocumentsInCollectionGroup`, e.g.:
+
+```typescript
+// e.g. `my-sub-collection` is a sub collection of `my-collection/{someId}`
+const collection = await firestore.getDocumentsInCollectionGroup(
+  "my-sub-collection",
+);
 ```
 
 ### Fetch all documents in a collection with a filter
 
 Note: The fetched documents will have an additional `_id` field, which is the
 document ID.
+
+> You can use the same syntax for both `getDocumentsInCollection` and
+> `getDocumentsInCollectionGroup` methods. The latter also returns a `_path`
+> property.
 
 ```typescript
 // Import the FirestoreOperator enum
@@ -133,7 +151,11 @@ const documents = await firestore.getDocumentsInCollection("my-collection", {
       ["name", FirestoreOperator.EQUAL, "Ivan Petrov"],
       ["height", FirestoreOperator.LESS_THAN, 200],
       ["address.city", FirestoreOperator.EQUAL, "Moscow"], // example of a nested field
-      ["bornAt", FirestoreOperator.GREATER_THAN, new Date("1990-01-01T12:50:00.000Z")], // example of a timestamp filter
+      [
+        "bornAt",
+        FirestoreOperator.GREATER_THAN,
+        new Date("1990-01-01T12:50:00.000Z"),
+      ], // example of a timestamp filter
     ],
   },
   orderBy: [{ field: "createdAt", direction: "DESCENDING" }], // you can sort the results
@@ -184,12 +206,17 @@ await firestore.createDocument("my-collection", {
 
 The above will be converted to a Firestore timestamp automatically.
 
-When filtering results by timestamp, make sure to use `Date` objects as well, e.g.:
+When filtering results by timestamp, make sure to use `Date` objects as well,
+e.g.:
 
 ```typescript
 const documents = await firestore.getDocumentsInCollection("my-collection", {
   where: {
-    filters: [["createdAt", FirestoreOperator.GREATER_THAN, new Date("2024-12-02")]],
+    filters: [[
+      "createdAt",
+      FirestoreOperator.GREATER_THAN,
+      new Date("2024-12-02"),
+    ]],
   },
 });
 ```

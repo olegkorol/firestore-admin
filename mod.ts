@@ -302,12 +302,109 @@ export class FirestoreAdminClient {
         this.errorHandler(data.error, "listDocumentsInCollection");
       }
 
-      return data.documents.map((doc: any) => {
+      return data.documents?.map((doc: any) => {
         const docId = doc.name.split(`/`).pop() ?? "unknown";
         const documentFields = doc.fields || {};
         return { ...this.documentToJson(documentFields), _id: docId };
-      });
+      }) || [];
     }
+  }
+
+  /**
+   * Gets documents from a collection group (i.e. a sub collection)
+   * @param collectionId - The ID of the collection group to query
+   * @param options - Query options including filters, ordering, and limits
+   * @returns Array of documents matching the query
+   * @example
+   * ```ts
+   * // e.g. `orders` is a sub collection of `customers/{customerId}`
+   * const documents = await firestore.getDocumentsInCollectionGroup('orders', {
+   *   where: {
+   *     filters: [
+   *       ['createdAt', FirestoreOperator.GREATER_THAN, new Date('2024-01-01')]
+   *     ]
+   *   }
+   * })
+   * ```
+   */
+  async getDocumentsInCollectionGroup(
+    collectionId: string,
+    options: {
+      where?: {
+        filters: [string, FirestoreOperator, any][];
+      };
+      orderBy?: { field: string; direction: "ASCENDING" | "DESCENDING" }[];
+      limit?: number;
+    } = {},
+  ): Promise<any[]> {
+    const structuredQuery: any = {
+      from: [{
+        collectionId,
+        allDescendants: true,
+      }],
+    };
+
+    if (options.where?.filters) {
+      structuredQuery.where = {
+        compositeFilter: {
+          op: "AND",
+          filters: options.where.filters.map(([field, operator, value]) => ({
+            fieldFilter: {
+              field: { fieldPath: field },
+              op: operator,
+              value: this.jsonToDocument({ value })[`fields`][`value`],
+            },
+          })),
+        },
+      };
+    }
+
+    if (options.orderBy) {
+      structuredQuery.orderBy = options.orderBy.map(({ field, direction }) => ({
+        field: { fieldPath: field },
+        direction,
+      }));
+    }
+
+    if (options.limit) {
+      structuredQuery.limit = options.limit;
+    }
+
+    const headers = await this.getHeaders();
+    const response = await fetch(
+      `${this.firestoreBaseUrl}:runQuery`,
+      {
+        headers,
+        method: "POST",
+        body: JSON.stringify({ structuredQuery }),
+      },
+    );
+    const data: any = await response.json();
+
+    if (data?.error || data?.[0]?.error) {
+      this.errorHandler(
+        data.error ?? data?.[0]?.error,
+        `${this.firestoreBaseUrl}:runQuery`,
+      );
+      console.log({
+        extendedDetails: data.error?.details ?? data?.[0]?.error?.details,
+      });
+      return [];
+    }
+
+    if (data.length == 1 && !data[0].document) {
+      return [];
+    }
+
+    return data.map((doc: any) => {
+      const docId = doc.document?.name.split("/").pop() ?? "unknown";
+      const documentFields = doc.document?.fields || {};
+      return {
+        ...this.documentToJson(documentFields),
+        _id: docId,
+        _path: doc.document?.name?.split("documents/")[1],
+      };
+    });
   }
 
   /**
