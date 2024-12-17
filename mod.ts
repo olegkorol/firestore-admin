@@ -169,7 +169,7 @@ export class FirestoreAdminClient {
     });
     const data: any = await response.json();
     if (data?.error) this.errorHandler(data.error, "getDocument");
-    console.log(this.documentToJson(data.fields));
+    // console.log(this.documentToJson(data.fields));
     return this.documentToJson(data.fields);
   }
 
@@ -301,9 +301,9 @@ export class FirestoreAdminClient {
           data.error ?? data?.[0]?.error,
           `${this.firestoreBaseUrl}/${path}:runQuery`,
         );
-        console.log({
-          extendedDetails: data.error?.details ?? data?.[0]?.error?.details,
-        });
+        // console.log({
+        //   extendedDetails: data.error?.details ?? data?.[0]?.error?.details,
+        // });
         return [];
       }
 
@@ -314,7 +314,7 @@ export class FirestoreAdminClient {
 
       return data.map((doc: any) => {
         const docId = doc.document?.name.split(`/`).pop() ?? "unknown";
-        console.log({ docId });
+        // console.log({ docId });
         const documentFields = doc.document?.fields || {};
         return { ...this.documentToJson(documentFields), _id: docId };
       });
@@ -413,9 +413,9 @@ export class FirestoreAdminClient {
         data.error ?? data?.[0]?.error,
         `${this.firestoreBaseUrl}:runQuery`,
       );
-      console.log({
-        extendedDetails: data.error?.details ?? data?.[0]?.error?.details,
-      });
+      // console.log({
+      //   extendedDetails: data.error?.details ?? data?.[0]?.error?.details,
+      // });
       return [];
     }
 
@@ -474,7 +474,7 @@ export class FirestoreAdminClient {
       );
     }
 
-    console.log("> Updating document:\n", url);
+    // console.log("> Updating document:\n", url);
 
     const headers = await this.getHeaders();
     const response = await fetch(`${url}`, {
