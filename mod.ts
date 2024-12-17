@@ -231,13 +231,40 @@ export class FirestoreAdminClient {
         structuredQuery.where = {
           compositeFilter: {
             op: "AND",
-            filters: options.where.filters.map(([field, op, value]) => ({
-              fieldFilter: {
-                field: { fieldPath: field },
-                op,
-                value: this.encodeValue(value),
-              },
-            })),
+            filters: options.where.filters.map(([field, op, value]) => {
+              if (field === "documentId") {
+                if (!Array.isArray(value)) {
+                  value = [value];
+                }
+                // For documentId filters, we need to construct the full document path
+                const fullPaths = value.map((id: string) => {
+                  // If ID is already a full path, use it directly
+                  if (id.includes("projects/")) return id;
+                  // Otherwise construct the full path
+                  return `projects/${this.GCP_PROJECT_NAME}/databases/(default)/documents/${path}/${id}`;
+                });
+                return {
+                  fieldFilter: {
+                    field: { fieldPath: "__name__" },
+                    op: FirestoreOperator.IN, // Filtering by document ID(s) requires IN operator
+                    value: {
+                      arrayValue: {
+                        values: fullPaths.map((p: any) => ({
+                          referenceValue: p,
+                        })),
+                      },
+                    },
+                  },
+                };
+              }
+              return {
+                fieldFilter: {
+                  field: { fieldPath: field },
+                  op,
+                  value: this.encodeValue(value),
+                },
+              };
+            }),
           },
         };
       }

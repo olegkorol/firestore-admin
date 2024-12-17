@@ -63,6 +63,11 @@ const firestore = new FirestoreAdminClient();
 `firestore-admin` will take care of parsing the data to/from JSON when
 fetching/updating documents.
 
+If you work with Firestore Timestamp fields, read the
+[Using timestamps](#using-timestamps) section.<br /> If you need to query
+documents by their ID, read the [Using document IDs in a filter](#using-document-ids-in-a-filter)
+section.
+
 ### Create a document
 
 ```typescript
@@ -204,7 +209,8 @@ await firestore.createDocument("my-collection", {
 });
 ```
 
-The above will be converted to a Firestore timestamp automatically.
+The above `Date` object will be converted to a Firestore timestamp
+automatically.
 
 When filtering results by timestamp, make sure to use `Date` objects as well,
 e.g.:
@@ -217,6 +223,36 @@ const documents = await firestore.getDocumentsInCollection("my-collection", {
       FirestoreOperator.GREATER_THAN,
       new Date("2024-12-02"),
     ]],
+  },
+});
+```
+
+In the query results, timestamp fields will be returned as an ISO Date string,
+e.g. `2025-01-01T00:00:00.000Z`.
+
+## Using document IDs in a filter
+
+If you need to filter query results by document IDs in the
+`getDocumentsInCollection` method, you can do so with the `documentId` field.
+
+For example:
+
+```typescript
+// Will return all documents in the collection with the document IDs `docId1` and `docId2`.
+const documents = await firestore.getDocumentsInCollection("my-collection", {
+  where: {
+    filters: [["documentId", FirestoreOperator.IN, ["docId1", "docId2"]]],
+  },
+});
+
+// You can still combine it with other filters, e.g.:
+
+const documents = await firestore.getDocumentsInCollection("my-collection", {
+  where: {
+    filters: [
+      ["documentId", FirestoreOperator.IN, ["docId1", "docId2"]],
+      ["isActive", FirestoreOperator.EQUAL, true],
+    ],
   },
 });
 ```
